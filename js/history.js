@@ -1,6 +1,6 @@
 // ============================================================
 //  history.js — 계산 기록 관리 (localStorage)
-//  📝 과제: 💡 표시된 빈칸을 채워 기능을 완성하세요.
+//  필수 과제 및 선택 과제 구현 완료.
 // ============================================================
 
 const STORAGE_KEY = "calc_history";
@@ -18,10 +18,18 @@ const MAX_COUNT   = 20;
  * @returns {Array} 기록 배열
  */
 export const loadHistory = () => {
-    // 💡 [과제 5] 여기에 코드를 작성하세요.
-
-
-
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw === null) return [];
+        const history = JSON.parse(raw);
+        if (!Array.isArray(history)) return [];
+        return history.filter(item => item && typeof item.expression === "string"
+            && typeof item.result === "string" && typeof item.date === "string")
+            .slice(0, MAX_COUNT);
+    } catch {
+        // 손상된 저장 데이터 때문에 계산기 전체가 멈추지 않게 합니다.
+        return [];
+    }
 };
 
 // ── 과제 6: 기록 저장 ────────────────────────────────────────
@@ -35,10 +43,7 @@ export const loadHistory = () => {
  * @param {Array} history - 저장할 기록 배열
  */
 export const saveHistory = (history) => {
-    // 💡 [과제 6] 여기에 코드를 작성하세요.
-
-
-
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, MAX_COUNT)));
 };
 
 // ── 과제 7: 기록 항목 추가 ───────────────────────────────────
@@ -59,10 +64,10 @@ export const saveHistory = (history) => {
  * @returns {Array} 업데이트된 기록 배열
  */
 export const addHistory = (expression, result) => {
-    // 💡 [과제 7] 여기에 코드를 작성하세요.
-
-
-
+    const item = { expression, result, date: new Date().toLocaleString("ko-KR") };
+    const updated = [item, ...loadHistory()].slice(0, MAX_COUNT);
+    saveHistory(updated);
+    return updated;
 };
 
 // ── 도전 2: 기록 개별 삭제 (선택 과제) ──────────────────────
@@ -77,10 +82,9 @@ export const addHistory = (expression, result) => {
  * @returns {Array} 업데이트된 기록 배열
  */
 export const deleteHistoryItem = (index) => {
-    // 💡 [도전 2] 여기에 코드를 작성하세요.
-
-
-
+    const updated = loadHistory().filter((_, i) => i !== index);
+    saveHistory(updated);
+    return updated;
 };
 
 // ── 기록 전체 삭제 (완성 코드 — 수정 금지) ──────────────────

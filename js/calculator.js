@@ -1,6 +1,6 @@
 // ============================================================
 //  calculator.js — 계산기 핵심 로직
-//  📝 과제: 💡 표시된 빈칸을 채워 기능을 완성하세요.
+//  필수 과제 및 선택 과제 구현 완료.
 // ============================================================
 
 const mainDisplay = document.getElementById("mainDisplay");
@@ -27,20 +27,21 @@ export const updateDisplay = () => {
  * @param {string} num - 입력된 숫자 문자 ("0"~"9", ".")
  */
 export const appendNumber = (num) => {
-    // 💡 [과제 1] 아래 규칙에 따라 코드를 작성하세요.
-    //
-    // 규칙 1. justCalculated가 true이면 expression을 ""로 초기화 후 입력
-    //         (새로운 계산 시작)
-    //
-    // 규칙 2. expression이 "0"일 때 숫자를 누르면 "0"을 대체
-    //         (예: "0" + "5" → "5",  "0" + "." → "0.")
-    //
-    // 규칙 3. 소수점(.)은 현재 숫자 구간에 이미 있으면 추가하지 않음
-    //         (예: "3.14" 상태에서 "." 을 눌러도 무시)
-    //         힌트: expression.split(/[+\-*\/]/) 로 숫자 구간을 나눌 수 있습니다.
-
-
-
+    if (justCalculated) {
+        expression = "";
+    }
+    const parts = expression.split(/[+\-*\/]/);
+    const currentNum = parts[parts.length - 1];
+    if (num === "." && currentNum.includes(".")) {
+        return;
+    }
+    if (expression === "0" && num !== ".") {
+        expression = num;
+    } else if (expression === "" && num === ".") {
+        expression = "0.";
+    } else {
+        expression += num;
+    }
     justCalculated = false;
     updateDisplay();
 };
@@ -57,20 +58,15 @@ export const appendNumber = (num) => {
  * @param {string} op - 연산자 문자 ("+", "-", "*", "/")
  */
 export const appendOperator = (op) => {
-    // 💡 [과제 2] 아래 규칙에 따라 코드를 작성하세요.
-    //
-    // 규칙 1. expression이 비어 있으면 무시 (연산자로 시작 불가)
-    //
-    // 규칙 2. 마지막 문자가 이미 연산자이면 새 연산자로 교체
-    //         (예: "3+" 상태에서 "*" 누르면 → "3*")
-    //
-    // 규칙 3. justCalculated가 true이면 expression을 유지하고 연산자 추가
-    //         (= 누른 직후 이어서 계산 가능)
-    //
-    // 힌트: 문자열의 마지막 문자 → expression[expression.length - 1]
-    // 힌트: 마지막 문자 제거    → expression.slice(0, -1)
-
-
+    if (expression === "") return;
+    
+    const lastChar = expression[expression.length - 1];
+    
+    if (["+", "-", "*", "/"].includes(lastChar)) {
+        expression = expression.slice(0, -1) + op;
+    } else {
+        expression += op;
+    }
 
     justCalculated = false;
     updateDisplay();
@@ -82,6 +78,7 @@ export const appendOperator = (op) => {
  *
  * 구현해야 할 규칙:
  *  1. expression이 비어 있거나 연산자로 끝나면 null 반환 (계산 안 함)
+
  *  2. 0으로 나누기 감지 → subDisplay에 에러 메시지 표시 후 null 반환
  *  3. 성공 시:
  *     - mainDisplay → 결과값
@@ -91,33 +88,46 @@ export const appendOperator = (op) => {
  *
  * 힌트 — 수식 문자열을 안전하게 계산하는 방법:
  *   Function('"use strict"; return (' + expression + ')')()
- *   eval() 과 같은 역할이지만 전역 스코프에 접근하지 않아 조금 더 안전합니다.
+ *   실행 전 숫자와 사칙연산만 포함하는 수식인지 반드시 검증합니다.
  *
  * 힌트 — 부동소수점 오류 처리:
- *   parseFloat(result.toFixed(10)).toString()
+ *   Number(result.toPrecision(15)).toString()
  *
  * @returns {{ expression: string, result: string } | null}
  */
 export const calculate = () => {
-    // 💡 [과제 3] 아래 규칙에 따라 코드를 작성하세요.
-    //
-    // 규칙 1. expression이 비어 있거나 연산자로 끝나면 null 반환
-    //
-    // 규칙 2. 0으로 나누기 감지 → subDisplay에 에러 메시지 표시 후 null 반환
-    //         (힌트: /\/0/.test(expression) 으로 감지)
-    //
-    // 규칙 3. 계산 성공 시:
-    //         - mainDisplay.textContent    = 결과값
-    //         - mainDisplay.style.fontSize = 결과값 길이에 따라 조정
-    //         - subDisplay.textContent     = "수식 ="
-    //         - justCalculated = true
-    //         - expression = 결과값 (이후 연산에 이어 쓸 수 있도록)
-    //
-    // 규칙 4. 반환값: { expression: 수식, result: 결과값 문자열 }
-    //         (main.js에서 기록 저장에 사용합니다)
+    if (expression === "") return null;
+    const lastChar = expression[expression.length - 1];
+    
+    if (["+", "-", "*", "/", "."].includes(lastChar)) return null;
+    // 숫자와 사칙연산으로 구성된 수식만 허용합니다.
+    // 지수 표기는 큰 수 또는 작은 수의 계산 결과를 이어 쓸 때 필요합니다.
+    if (/\/0(?![.\d])/.test(expression)) {
+        subDisplay.textContent = "0으로 나눌 수 없습니다";
+        return null;
+    }
+    try {
+        const originalExpression = expression;
+        const rawResult = Function('"use strict"; return (' + expression + ')')();
 
+        if (!isFinite(rawResult) || isNaN(rawResult)) {
+            subDisplay.textContent = "계산 오류";
+            return null;
+        }
+    
+    const resultStr = parseFloat(rawResult.toFixed(10)).toString();
 
+    mainDisplay.textContent = resultStr;
+    mainDisplay.style.fontSize = resultStr.length > 10 ? "1.8rem" : "2.6rem";
+    subDisplay.textContent = `${originalExpression} =`;
+    justCalculated = true;
+    expression = resultStr;
 
+    return { expression: originalExpression, result: resultStr };
+    } catch (e) {
+        subDisplay.textContent = "수식 오류";
+        return null;
+    }
 };
 
 // ── 과제 4: 마지막 문자 삭제 ────────────────────────────────
@@ -126,15 +136,12 @@ export const calculate = () => {
  * justCalculated 상태(계산 직후)라면 전체를 초기화합니다.
  */
 export const deleteLast = () => {
-    // 💡 [과제 4] 아래 규칙에 따라 코드를 작성하세요.
-    //
-    // 규칙 1. justCalculated가 true이면 전체 초기화 (clearAll 호출)
-    //
-    // 규칙 2. 그렇지 않으면 expression의 마지막 글자 하나만 제거
-    //         (힌트: expression.slice(0, -1))
-
-
-
+    if (justCalculated) {
+        clearAll();
+        return;
+    }
+    expression = expression.slice(0, -1);
+    subDisplay.textContent = "";
     updateDisplay();
 };
 
@@ -151,10 +158,18 @@ export const deleteLast = () => {
  *       그 뒤의 숫자 부분만 parseFloat(numStr) / 100 으로 교체합니다.
  */
 export const appendPercent = () => {
-    // 💡 [도전 1] 여기에 코드를 작성하세요.
+    if (expression === "" || /[+\-*/]$/.test(expression)) return;
 
+    // 지수 표기의 부호를 연산자로 오인하지 않고 마지막 숫자를 찾습니다.
+    const match = expression.match(/(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[+-]?[0-9]+)?$/);
+    if (!match) return;
+    const value = Number(match[0]) / 100;
+    if (!Number.isFinite(value)) return;
 
-
+    expression = expression.slice(0, match.index) + Number(value.toPrecision(15)).toString();
+    subDisplay.textContent = "";
+    // 계산 결과의 %를 구한 뒤 숫자를 누르면 새 계산을 시작합니다.
+    updateDisplay();
 };
 
 // ── 도전 3: 기록 클릭 시 결과 불러오기 (선택 과제) ──────────
@@ -166,10 +181,15 @@ export const appendPercent = () => {
  *       justCalculated = true, updateDisplay() 를 호출합니다.
  */
 export const setExpression = (value) => {
-    // 💡 [도전 3] 여기에 코드를 작성하세요.
+    const result = String(value);
+    if (!/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[+-]?[0-9]+)?$/.test(result)
+        || !Number.isFinite(Number(result))) return;
 
-
-
+    expression = result;
+    justCalculated = true;
+    subDisplay.textContent = "";
+    document.querySelectorAll(".btn-op").forEach(b => b.classList.remove("active"));
+    updateDisplay();
 };
 
 // ── 전체 초기화 (완성 코드 — 수정 금지) ─────────────────────
